@@ -1,0 +1,89 @@
+# Core ML & Data Science
+numpy==1.24.3
+pandas==2.0.3
+scikit-learn==1.3.0
+scipy==1.11.1
+
+# Deep Learning & Advanced ML
+xgboost==1.7.6
+lightgbm==4.0.0
+catboost==1.2.0
+
+# Imbalanced Learning
+imbalanced-learn==0.11.0
+
+# MLflow & Experiment Tracking
+mlflow==2.8.0
+mlflow-skinny==2.8.0
+
+# Hyperparameter Optimization
+optuna==3.3.0
+hyperopt==0.2.7
+
+# API & Web Framework
+fastapi==0.103.0
+uvicorn[standard]==0.23.2
+pydantic==2.3.0
+python-multipart==0.0.6
+
+# Monitoring & Metrics
+prometheus-client==0.17.1
+prometheus-fastapi-instrumentator==6.1.0
+
+# Drift Detection
+alibi-detect==0.11.4
+
+# Data Validation
+great-expectations==0.17.15
+
+# Visualization
+matplotlib==3.7.2
+seaborn==0.12.2
+plotly==5.16.1
+
+# Database & Storage
+psycopg2-binary==2.9.7
+pymongo==4.5.0
+boto3==1.28.25
+
+# Utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1
+click==8.1.7
+requests==2.31.0
+httpx==0.24.1
+
+# Testing
+pytest==7.4.0
+pytest-cov==4.1.0
+pytest-asyncio==0.21.1
+httpx==0.24.1
+
+# Code Quality
+black==23.7.0
+flake8==6.1.0
+isort==5.12.0
+mypy==1.5.1
+pylint==2.17.5
+
+# Logging & Observability
+loguru==0.7.0
+structlog==23.1.0
+
+# Date & Time
+python-dateutil==2.8.2
+
+# Databricks Specific
+databricks-cli==0.17.7
+dbutils==0.1.0  # Mock for local development
+
+# Model Explainability
+shap==0.42.1
+lime==0.2.0.1
+
+# Performance
+joblib==1.3.2
+numba==0.57.1
+
+# Security
+cryptography==41.0.3

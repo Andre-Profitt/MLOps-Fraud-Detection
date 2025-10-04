@@ -1,0 +1,91 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'fraud-detection-monitor'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Scrape FastAPI application
+  - job_name: 'fraud-detection-api'
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['fraud-api:8000']
+        labels:
+          service: 'fraud-detection-api'
+          environment: 'production'
+
+  # Scrape Champion Model API
+  - job_name: 'champion-model'
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['champion-api:8001']
+        labels:
+          service: 'champion-model'
+          model: 'champion'
+          environment: 'production'
+
+  # Scrape Challenger Model API
+  - job_name: 'challenger-model'
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['challenger-api:8002']
+        labels:
+          service: 'challenger-model'
+          model: 'challenger'
+          environment: 'staging'
+
+  # Scrape Node Exporter (system metrics)
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+
+  # Scrape cAdvisor (container metrics)
+  - job_name: 'cadvisor'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'cadvisor'
+
+  # Scrape MLflow Tracking Server
+  - job_name: 'mlflow'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['mlflow:5000']
+        labels:
+          service: 'mlflow-tracking'
+
+  # Custom application metrics
+  - job_name: 'drift-detection'
+    scrape_interval: 60s  # Less frequent for drift detection
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['drift-detector:8003']
+        labels:
+          service: 'drift-detection'

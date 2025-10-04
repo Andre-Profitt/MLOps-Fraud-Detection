@@ -1,0 +1,249 @@
+version: '3.8'
+
+services:
+  # Fraud Detection API (Champion Model)
+  champion-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: fraud-champion-api
+    ports:
+      - "8001:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
+      - CHAMPION_MODEL_URI=models:/fraud_detection_champion/Production
+      - AB_TEST_ENABLED=false
+    volumes:
+      - ../data:/data
+      - ../models:/models
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+  # Fraud Detection API (Challenger Model)
+  challenger-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: fraud-challenger-api
+    ports:
+      - "8002:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
+      - CHAMPION_MODEL_URI=models:/fraud_detection_challenger/Staging
+      - AB_TEST_ENABLED=false
+    volumes:
+      - ../data:/data
+      - ../models:/models
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+  # Main API with A/B Testing
+  fraud-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: fraud-main-api
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}
+      - CHAMPION_MODEL_URI=models:/fraud_detection_champion/Production
+      - CHALLENGER_MODEL_URI=models:/fraud_detection_challenger/Staging
+      - AB_TEST_ENABLED=true
+      - CHALLENGER_TRAFFIC_PERCENTAGE=10
+    volumes:
+      - ../data:/data
+      - ../models:/models
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    networks:
+      - fraud-detection-network
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=30d'
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+  # Grafana - Visualization & Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-clock-panel
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    networks:
+      - fraud-detection-network
+
+  # Node Exporter - System Metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro,rslave'
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+  # cAdvisor - Container Metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+  # Alertmanager - Alert Management
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/config.yml:/etc/alertmanager/config.yml
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+  # MLflow Tracking Server (optional - use Databricks in production)
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow-server
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow/mlflow.db
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
+    volumes:
+      - mlflow-data:/mlflow
+    command:
+      - mlflow
+      - server
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "5000"
+      - --backend-store-uri
+      - "sqlite:///mlflow/mlflow.db"
+      - --default-artifact-root
+      - "/mlflow/artifacts"
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+  # PostgreSQL - Database for drift tracking
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-drift
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=fraud_user
+      - POSTGRES_PASSWORD=fraud_pass
+      - POSTGRES_DB=fraud_detection
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+  # Redis - Cache for predictions
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+  # Nginx - Reverse Proxy & Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-lb
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - fraud-api
+      - champion-api
+      - challenger-api
+    restart: unless-stopped
+    networks:
+      - fraud-detection-network
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  alertmanager-data:
+    driver: local
+  mlflow-data:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  fraud-detection-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
