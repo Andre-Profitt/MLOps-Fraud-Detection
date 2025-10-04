@@ -1,0 +1,36 @@
+===========================================
+🚀 COPY-PASTE GITHUB SETUP (2 MINUTES)
+===========================================
+
+STEP 1: Create GitHub Repository
+---------------------------------
+1. Open: https://github.com/new
+2. Repository name: MLOps-Fraud-Detection
+3. Description: Production-grade fraud detection pipeline with MLflow
+4. Make it Public
+5. DO NOT check any boxes (no README, no .gitignore, no license)
+6. Click "Create repository"
+
+STEP 2: Copy-Paste These Commands
+---------------------------------
+Open your terminal and run these commands one by one:
+
+cd /home/claude/mlflow-fintech-fraud-pipeline
+
+# Configure git (replace with YOUR info)
+git config user.email "andreprofitt@gmail.com"
+git config user.name "Andre Profitt"
+
+# Add remote (replace YOUR_USERNAME with your GitHub username)
+git remote add origin https://github.com/YOUR_USERNAME/MLOps-Fraud-Detection.git
+
+# Push to GitHub
+git push -u origin main
+
+DONE! Your repo is live! 🎉
+
+===========================================
+Troubleshooting:
+- If "remote origin already exists": git remote remove origin
+- If authentication fails: You may need to enter GitHub credentials or use a Personal Access Token
+===========================================
