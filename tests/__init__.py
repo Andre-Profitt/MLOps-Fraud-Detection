@@ -1,4 +1,5 @@
 """
 Test suite for MLflow FinTech Fraud Detection Pipeline
 """
+
 __version__ = "1.0.0"
