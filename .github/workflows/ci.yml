@@ -11,15 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
       - name: Cache pip packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -37,6 +37,8 @@ jobs:
           pwd
           echo "Directory contents:"
           ls -la
+          echo "Source directory:"
+          ls -la src/ || echo "src/ directory not found"
           echo "Tests directory:"
           ls -la tests/ || echo "tests/ directory not found"
 
@@ -74,15 +76,15 @@ jobs:
     needs: code-quality
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
       - name: Cache pip packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -105,7 +107,7 @@ jobs:
           fi
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./coverage.xml
           flags: unittests
@@ -113,7 +115,7 @@ jobs:
         continue-on-error: true
 
       - name: Archive coverage reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: htmlcov/
@@ -123,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check documentation files
         run: |
@@ -147,9 +149,11 @@ jobs:
           echo "Unit Tests: ${{ needs.unit-tests.result }}"
           echo "Documentation: ${{ needs.documentation.result }}"
           echo "=========================================="
-
-      - name: Check overall status
-        if: needs.code-quality.result != 'success' || needs.unit-tests.result != 'success' || needs.documentation.result != 'success'
-        run: |
-          echo "⚠️  Some checks failed or were skipped"
-          exit 0
+          
+          if [ "${{ needs.code-quality.result }}" = "success" ] && \
+             [ "${{ needs.unit-tests.result }}" = "success" ] && \
+             [ "${{ needs.documentation.result }}" = "success" ]; then
+            echo "🎉 All CI checks passed!"
+          else
+            echo "⚠️  Some checks had issues (see above)"
+          fi
