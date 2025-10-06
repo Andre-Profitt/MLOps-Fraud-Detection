@@ -75,7 +75,6 @@ python-dateutil==2.8.2
 
 # Databricks Specific
 databricks-cli==0.17.7
-dbutils==0.1.0  # Mock for local development
 
 # Model Explainability
 shap==0.42.1
