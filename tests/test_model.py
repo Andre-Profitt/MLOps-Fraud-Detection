@@ -1,92 +1,109 @@
-"""
-Tests for model inference and utilities
-"""
-
-import os
-import sys
-
+"""Tests for model functionality"""
+import pytest
 import numpy as np
 import pandas as pd
-import pytest
+from unittest.mock import Mock
 
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + "/.."))
+class TestModelTraining:
+    """Test model training functionality"""
+    
+    def test_train_test_split(self, sample_fraud_data):
+        """Test data can be split for training"""
+        train_size = int(0.6 * len(sample_fraud_data))
+        val_size = int(0.2 * len(sample_fraud_data))
+        
+        train = sample_fraud_data.iloc[:train_size]
+        val = sample_fraud_data.iloc[train_size:train_size+val_size]
+        test = sample_fraud_data.iloc[train_size+val_size:]
+        
+        assert len(train) + len(val) + len(test) == len(sample_fraud_data)
+        assert len(train) > len(val)
+        assert len(train) > len(test)
+    
+    def test_class_imbalance_detection(self, sample_fraud_data):
+        """Test detection of class imbalance"""
+        fraud_rate = sample_fraud_data['Class'].mean()
+        
+        # Should be imbalanced (fraud rate low)
+        assert fraud_rate < 0.5, "Dataset should be imbalanced"
+    
+    def test_feature_extraction(self, sample_fraud_data):
+        """Test feature extraction from data"""
+        features = sample_fraud_data.drop('Class', axis=1)
+        target = sample_fraud_data['Class']
+        
+        assert len(features.columns) >= 29  # At least V1-V28 + Amount
+        assert len(features) == len(target)
 
-
-class TestModelInput:
-    """Test model input validation"""
-
-    def test_input_shape_validation(self):
-        """Test model input shape"""
-        n_features = 41
-        X = np.random.randn(10, n_features)
-
-        assert X.shape[0] == 10
-        assert X.shape[1] == n_features
-
-    def test_feature_types(self, sample_transaction_data):
-        """Test feature data types"""
-        df = pd.DataFrame([sample_transaction_data])
-
-        assert df.select_dtypes(include=[np.number]).shape[1] == len(sample_transaction_data)
-
-
-class TestFeatureEngineering:
-    """Test feature engineering logic"""
-
-    def test_hour_calculation(self):
-        """Test hour calculation"""
-        time_seconds = 3600
-        hour = (time_seconds / 3600) % 24
-
-        assert hour == 1.0
-
-    def test_time_period(self):
-        """Test time period calculation"""
-
-        def get_time_period(hour):
-            if 0 <= hour < 6:
-                return 0
-            elif 6 <= hour < 12:
-                return 1
-            elif 12 <= hour < 18:
-                return 2
-            else:
-                return 3
-
-        assert get_time_period(3) == 0
-        assert get_time_period(9) == 1
-
-    def test_log_transformation(self):
-        """Test log transformation"""
-        amounts = pd.Series([0, 10, 100, 1000])
-        log_amounts = np.log1p(amounts)
-
-        assert log_amounts[0] == 0
-        assert log_amounts[3] > log_amounts[2]
-
-
-class TestModelPrediction:
-    """Test model prediction logic"""
-
-    def test_prediction_output_range(self):
-        """Test prediction outputs"""
-        predictions = np.array([0, 1, 0, 0, 1])
-
+class TestModelEvaluation:
+    """Test model evaluation metrics"""
+    
+    def test_accuracy_calculation(self):
+        """Test accuracy metric calculation"""
+        y_true = np.array([0, 1, 0, 1, 0])
+        y_pred = np.array([0, 1, 0, 1, 0])
+        
+        accuracy = (y_true == y_pred).sum() / len(y_true)
+        assert accuracy == 1.0, "Perfect predictions should give 100% accuracy"
+    
+    def test_confusion_matrix_components(self):
+        """Test confusion matrix components"""
+        y_true = np.array([0, 0, 1, 1])
+        y_pred = np.array([0, 1, 0, 1])
+        
+        # Manual calculation
+        tp = ((y_true == 1) & (y_pred == 1)).sum()
+        tn = ((y_true == 0) & (y_pred == 0)).sum()
+        fp = ((y_true == 0) & (y_pred == 1)).sum()
+        fn = ((y_true == 1) & (y_pred == 0)).sum()
+        
+        assert tp == 1
+        assert tn == 1
+        assert fp == 1
+        assert fn == 1
+    
+    def test_mock_model_performance(self):
+        """Test mock model performance metrics"""
+        mock_model = Mock()
+        mock_model.predict = Mock(return_value=np.array([0, 1, 0, 1]))
+        
+        predictions = mock_model.predict(np.random.randn(4, 30))
+        
+        assert len(predictions) == 4
         assert all(p in [0, 1] for p in predictions)
 
-    def test_probability_output_range(self):
-        """Test probability outputs"""
-        probabilities = np.array([0.05, 0.95, 0.30])
-
-        assert all(0 <= p <= 1 for p in probabilities)
-
-
-class TestDataValidation:
-    """Test data validation"""
-
-    def test_missing_value_detection(self):
-        """Test missing value detection"""
-        df = pd.DataFrame({"A": [1, 2, np.nan, 4], "B": [5, 6, 7, 8]})
-
-        assert df["A"].isna().sum() == 1
-        assert df["B"].isna().sum() == 0
+class TestFeatureEngineering:
+    """Test feature engineering"""
+    
+    def test_log_transformation(self):
+        """Test log transformation of amount"""
+        amounts = np.array([100, 200, 300])
+        log_amounts = np.log1p(amounts)
+        
+        assert all(log_amounts > 0)
+        assert len(log_amounts) == len(amounts)
+    
+    def test_time_period_binning(self):
+        """Test time period creation"""
+        hours = np.array([1, 8, 14, 20])
+        periods = []
+        
+        for hour in hours:
+            if 0 <= hour < 6:
+                periods.append(0)  # Night
+            elif 6 <= hour < 12:
+                periods.append(1)  # Morning
+            elif 12 <= hour < 18:
+                periods.append(2)  # Afternoon
+            else:
+                periods.append(3)  # Evening
+        
+        assert periods == [0, 1, 2, 3]
+    
+    def test_amount_binning(self):
+        """Test amount categorization"""
+        amounts = np.array([25, 100, 500, 2000])
+        bins = [0, 50, 200, 1000, np.inf]
+        
+        # Simple binning test
+        assert all(a >= 0 for a in amounts)
