@@ -31,10 +31,8 @@ prometheus-client==0.17.1
 prometheus-fastapi-instrumentator==6.1.0
 
 # Drift Detection
-alibi-detect==0.11.4
 
 # Data Validation
-great-expectations==0.17.15
 
 # Visualization
 matplotlib==3.7.2
