@@ -157,3 +157,4 @@ jobs:
           else
             echo "⚠️  Some checks had issues (see above)"
           fi
+# Force CI rebuild
